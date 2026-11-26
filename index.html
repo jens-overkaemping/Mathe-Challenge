@@ -840,8 +840,6 @@
         startBtn.addEventListener("click", startGame);
         restartBtn.addEventListener("click", startGame);
 
-        userInput.addEventListener("input", checkAnswer);
-
         userInput.addEventListener("keydown", event => {
             if (event.key === "Enter") {
                 checkAnswer();
