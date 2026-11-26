@@ -1,14 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta name="robots" content="noindex, nofollow">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Mathe-Trainer mit fallenden Rechenaufgaben, Combo-System und globaler Rangliste.">
-  <title>Mathe-Trainer</title>
-  <!-- Kompletter CSS- und HTML-Struktur-Code mit responsiven Anpassungen -->
-</head>
-<!-- Vollständiger Code im obigen Quelltext enthalten -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Mathe-Trainer mit fallenden Rechenaufgaben, Combo-System und globaler Rangliste.">
+    <title>Mathe-Trainer</title>
 
     <style>
         * { box-sizing: border-box; }
@@ -102,7 +100,6 @@
             text-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
         }
 
-        /* Das Spielfeld behält seine bisherige Fall-Mechanik und Höhe. */
         .box-container {
             position: relative;
             width: 100%;
@@ -172,11 +169,17 @@
             font-weight: bold;
             cursor: pointer;
             transition: all 0.2s ease;
+            margin: 8px 0;
         }
 
         .restart-btn:hover {
             background: var(--mint);
             color: #030712;
+        }
+
+        .restart-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .leaderboard-panel {
@@ -244,15 +247,18 @@
 
         @media (max-width: 760px) {
             body { padding: 14px; }
+
             .page-shell {
                 grid-template-columns: minmax(0, 1fr);
                 max-width: 520px;
                 gap: 16px;
             }
+
             .leaderboard-panel {
                 position: static;
                 order: 2;
             }
+
             .game-container { padding: 20px; }
             .leaderboard-panel { padding: 17px; }
         }
@@ -270,18 +276,35 @@
 
 <body>
     <main class="page-shell">
+
         <section class="game-container" id="gameCard" aria-label="Mathe-Trainer">
+
             <h1>Mathe-Trainer</h1>
             <p class="subtitle">Übe Kopfrechnen und sammle Punkte</p>
 
             <label for="playerName">Dein Spielername:</label><br>
-            <input type="text" id="playerName" class="player-name"
-                   maxlength="24" placeholder="Name eingeben" autocomplete="nickname">
+
+            <input
+                type="text"
+                id="playerName"
+                class="player-name"
+                maxlength="20"
+                placeholder="Name eingeben"
+                autocomplete="nickname"
+            >
+
+            <div>
+                <button type="button" class="restart-btn" id="startBtn">
+                    Spiel starten
+                </button>
+            </div>
 
             <div class="combo-badge" id="comboText" aria-live="polite"></div>
 
             <div class="box-container" id="gameArea">
-                <div class="falling-question" id="questionText">Berechne...</div>
+                <div class="falling-question" id="questionText">
+                    Bereit?
+                </div>
             </div>
 
             <input
@@ -296,72 +319,142 @@
             >
 
             <div class="stats-container">
-                <div class="score-display">Punkte: <span id="scoreText">0</span></div>
-                <div class="highscore-display">Highscore: <span id="highscoreText">0</span></div>
+                <div class="score-display">
+                    Punkte: <span id="scoreText">0</span>
+                </div>
+
+                <div class="highscore-display">
+                    Highscore: <span id="highscoreText">0</span>
+                </div>
             </div>
 
             <div class="game-over" id="gameOver">
                 <h2>Spiel beendet!</h2>
                 <p>Deine Punkte: <strong id="finalScore">0</strong></p>
-                <button type="button" class="restart-btn" id="restartBtn">Nochmal spielen</button>
+
+                <button type="button" class="restart-btn" id="restartBtn">
+                    Nochmal spielen
+                </button>
             </div>
 
             <p class="footer-note">Mathe-Trainer · Schulversion</p>
+
         </section>
 
         <aside class="leaderboard-panel" aria-live="polite">
             <h2>Globale Top 10</h2>
             <p class="leaderboard-note">Die besten Punktestände</p>
+
             <ol class="leaderboard" id="leaderboardList">
                 <li>Rangliste wird geladen ...</li>
             </ol>
+
             <div id="saveStatus" role="status" aria-live="polite"></div>
         </aside>
+
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script>
+        // Supabase-Einstellungen
         const SUPABASE_URL = "https://llvunpjwlwyefuzabqah.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_NJE8YQ96N-5sA2hVNVrfBg_a1STgKjX";
+
+        const SUPABASE_ANON_KEY =
+            "sb_publishable_NJE8YQ96N-5sA2hVNVrfBg_a1STgKjX";
+
+        const GAME_FUNCTION_URL =
+            SUPABASE_URL + "/functions/v1/mathe-trainer-game";
 
         const supabaseClient = window.supabase?.createClient
-            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+            ? window.supabase.createClient(
+                SUPABASE_URL,
+                SUPABASE_ANON_KEY
+            )
             : null;
 
-        let scoreSubmitted = false;
-        let num1;
-        let num2;
-        let correctAnswer;
+
+        // Spielvariablen
         let score = 0;
         let highscore = 0;
         let currentY = 0;
+
         const startSpeed = 1.2;
         let fallSpeed = startSpeed;
+
         let gameInterval = null;
         let answerTimeout = null;
-        let isGameOver = false;
-        let comboCount = 0;
-        let multiplier = 1;
-        let lastSolveTime = 0;
-        let canAnswer = true;
 
+        let isGameOver = true;
+        let canAnswer = false;
+        let requestInProgress = false;
+
+        let sessionToken = null;
+        let scoreSubmitted = false;
+
+
+        // HTML-Elemente
         const gameCard = document.getElementById("gameCard");
         const gameArea = document.getElementById("gameArea");
         const questionText = document.getElementById("questionText");
         const userInput = document.getElementById("userInput");
+
         const scoreText = document.getElementById("scoreText");
         const highscoreText = document.getElementById("highscoreText");
         const comboText = document.getElementById("comboText");
+
         const gameOverBox = document.getElementById("gameOver");
         const finalScore = document.getElementById("finalScore");
+
+        const startBtn = document.getElementById("startBtn");
         const restartBtn = document.getElementById("restartBtn");
+
         const playerNameInput = document.getElementById("playerName");
         const leaderboardList = document.getElementById("leaderboardList");
         const saveStatus = document.getElementById("saveStatus");
 
+
+        // Verbindung zum sicheren Spielserver
+        async function callGameServer(action, extraData = {}) {
+
+            const response = await fetch(GAME_FUNCTION_URL, {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json",
+                    "apikey": SUPABASE_ANON_KEY
+                },
+
+                body: JSON.stringify({
+                    action,
+                    ...extraData
+                })
+            });
+
+            let data;
+
+            try {
+                data = await response.json();
+            } catch (error) {
+                throw new Error("Ungültige Serverantwort.");
+            }
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error || "Die Verbindung zum Spielserver ist fehlgeschlagen."
+                );
+            }
+
+            return data;
+        }
+
+
+        // Bestenliste laden
         async function loadLeaderboard() {
+
             if (!supabaseClient) {
-                leaderboardList.innerHTML = "<li>Supabase-Verbindung nicht verfügbar.</li>";
+                leaderboardList.innerHTML =
+                    "<li>Supabase-Verbindung nicht verfügbar.</li>";
                 return;
             }
 
@@ -372,73 +465,61 @@
                 .limit(10);
 
             if (error) {
-                leaderboardList.innerHTML = "<li>Rangliste konnte nicht geladen werden.</li>";
+                leaderboardList.innerHTML =
+                    "<li>Rangliste konnte nicht geladen werden.</li>";
+
                 console.error("Highscore laden:", error);
                 return;
             }
 
             leaderboardList.innerHTML = "";
+
             if (!data || data.length === 0) {
-                leaderboardList.innerHTML = "<li>Noch keine Einträge – spiele als Erster!</li>";
+                leaderboardList.innerHTML =
+                    "<li>Noch keine Einträge – spiele als Erster!</li>";
                 return;
             }
 
             data.forEach((entry) => {
                 const li = document.createElement("li");
-                li.textContent = `${entry.player_name} – ${entry.score} Punkte`;
+
+                li.textContent =
+                    `${entry.player_name} – ${entry.score} Punkte`;
+
                 leaderboardList.appendChild(li);
             });
         }
 
-        async function submitScore() {
-            if (scoreSubmitted) return;
-            if (!supabaseClient) {
-                saveStatus.textContent = "Supabase-Verbindung nicht verfügbar.";
-                return;
-            }
 
-            const playerName = playerNameInput.value.trim();
-            if (!playerName) {
-                saveStatus.textContent = "Bitte gib vor dem Spielen deinen Namen ein.";
-                playerNameInput.focus();
-                return;
-            }
-
-            scoreSubmitted = true;
-            saveStatus.textContent = "Speichere Punktestand ...";
-
-            const { error } = await supabaseClient
-                .from("highscores")
-                .insert([{ player_name: playerName, score: score }]);
-
-            if (error) {
-                saveStatus.textContent = "Speichern fehlgeschlagen. Bitte später erneut versuchen.";
-                console.error("Highscore speichern:", error);
-                scoreSubmitted = false;
-                return;
-            }
-
-            saveStatus.textContent = "Punktestand gespeichert!";
-            await loadLeaderboard();
-        }
-
+        // Lokalen persönlichen Highscore laden
         function loadHighscore() {
+
             try {
-                const savedHighscore = localStorage.getItem("mathDropHighscore");
+                const savedHighscore =
+                    localStorage.getItem("mathDropHighscore");
+
                 if (savedHighscore !== null) {
                     const parsed = Number.parseInt(savedHighscore, 10);
-                    if (Number.isFinite(parsed) && parsed >= 0) highscore = parsed;
+
+                    if (Number.isFinite(parsed) && parsed >= 0) {
+                        highscore = parsed;
+                    }
                 }
+
             } catch (error) {
                 highscore = 0;
             }
+
             highscoreText.textContent = highscore;
         }
 
+
         function updateHighscore() {
+
             if (score > highscore) {
                 highscore = score;
                 highscoreText.textContent = highscore;
+
                 try {
                     localStorage.setItem("mathDropHighscore", highscore);
                 } catch (error) {
@@ -447,184 +528,334 @@
             }
         }
 
-        function generateQuestion() {
-            if (isGameOver) return;
 
-            const operators = ["+", "-", "*"];
-            const operator = operators[Math.floor(Math.random() * operators.length)];
+        // Server-Aufgabe anzeigen
+        function showQuestion(data) {
 
-            if (operator === "+") {
-                num1 = Math.floor(Math.random() * 20) + 1;
-                num2 = Math.floor(Math.random() * 20) + 1;
-                correctAnswer = num1 + num2;
-            } else if (operator === "-") {
-                num1 = Math.floor(Math.random() * 20) + 5;
-                num2 = Math.floor(Math.random() * num1) + 1;
-                correctAnswer = num1 - num2;
-            } else {
-                num1 = Math.floor(Math.random() * 10) + 1;
-                num2 = Math.floor(Math.random() * 10) + 1;
-                correctAnswer = num1 * num2;
-            }
+            const num1 = data.current_num1;
+            const num2 = data.current_num2;
+            const operator = data.current_operator;
 
-            const displayOperator = operator === "*" ? "×" : operator;
-            questionText.textContent = num1 + " " + displayOperator + " " + num2;
+            const displayOperator =
+                operator === "*" ? "×" : operator;
+
+            questionText.textContent =
+                `${num1} ${displayOperator} ${num2}`;
+
             currentY = 0;
             questionText.style.top = "0px";
+
             userInput.value = "";
         }
 
+
+        // Spielgeschwindigkeit
+        function updateSpeed() {
+
+            if (score < 15) {
+                fallSpeed = startSpeed + (score * 0.03);
+
+            } else if (score < 40) {
+                fallSpeed =
+                    startSpeed + 0.45 + ((score - 15) * 0.05);
+
+            } else {
+                fallSpeed =
+                    startSpeed + 1.7 + ((score - 40) * 0.1);
+            }
+
+            fallSpeed = Math.min(fallSpeed, 8);
+        }
+
+
+        // Fallanimation
         function startFalling() {
+
             clearInterval(gameInterval);
+
             gameInterval = setInterval(() => {
+
                 if (isGameOver || !canAnswer) return;
 
                 currentY += fallSpeed;
+
                 questionText.style.top = currentY + "px";
 
-                const maxY = gameArea.clientHeight - questionText.offsetHeight;
-                if (currentY >= maxY) endGame();
+                const maxY =
+                    gameArea.clientHeight - questionText.offsetHeight;
+
+                if (currentY >= maxY) {
+                    endGame();
+                }
+
             }, 30);
         }
 
-        function endGame() {
-            if (isGameOver) return;
 
-            clearInterval(gameInterval);
-            gameInterval = null;
-            clearTimeout(answerTimeout);
-            answerTimeout = null;
+        // Neue Spielrunde starten
+        async function startGame() {
+
+            if (requestInProgress) return;
+
+            const playerName = playerNameInput.value.trim();
+
+            if (!playerName) {
+                saveStatus.textContent =
+                    "Bitte gib zuerst deinen Namen ein.";
+
+                playerNameInput.focus();
+                return;
+            }
+
+            requestInProgress = true;
+            startBtn.disabled = true;
+            restartBtn.disabled = true;
+
+            saveStatus.textContent = "Starte Spiel ...";
+
+            try {
+
+                const data = await callGameServer("start", {
+                    player_name: playerName
+                });
+
+                sessionToken = data.token;
+
+                score = 0;
+                scoreText.textContent = "0";
+
+                scoreSubmitted = false;
+                isGameOver = false;
+                canAnswer = true;
+
+                fallSpeed = startSpeed;
+                currentY = 0;
+
+                comboText.textContent = "";
+                gameOverBox.style.display = "none";
+
+                startBtn.style.display = "none";
+
+                gameCard.style.borderColor = "#00d2ff";
+                gameCard.style.boxShadow =
+                    "0 0 20px rgba(0, 210, 255, 0.25)";
+
+                showQuestion(data);
+
+                userInput.disabled = false;
+                userInput.focus();
+
+                saveStatus.textContent = "Viel Erfolg!";
+
+                startFalling();
+
+            } catch (error) {
+
+                console.error("Spielstart:", error);
+
+                saveStatus.textContent =
+                    error.message || "Spiel konnte nicht gestartet werden.";
+
+                startBtn.disabled = false;
+            }
+
+            requestInProgress = false;
+            restartBtn.disabled = false;
+        }
+
+
+        // Antwort prüfen lassen
+        async function checkAnswer() {
+
+            if (
+                !canAnswer ||
+                isGameOver ||
+                requestInProgress ||
+                !sessionToken
+            ) {
+                return;
+            }
+
+            const answerText = userInput.value.trim();
+
+            if (answerText === "") return;
+
+            const userAnswer = Number(answerText);
+
+            if (!Number.isSafeInteger(userAnswer)) return;
+
+            canAnswer = false;
+            requestInProgress = true;
+
+            try {
+
+                const data = await callGameServer("answer", {
+                    token: sessionToken,
+                    answer: userAnswer
+                });
+
+                if (!data.correct) {
+
+                    canAnswer = true;
+                    userInput.value = "";
+
+                    requestInProgress = false;
+                    return;
+                }
+
+                // Punkte kommen ausschließlich vom Server.
+                score = data.score;
+                scoreText.textContent = score;
+
+                updateHighscore();
+                updateSpeed();
+
+                if (data.combo_count >= 6) {
+                    comboText.textContent = "Mega Combo x3!";
+
+                } else if (data.combo_count >= 3) {
+                    comboText.textContent = "Combo x2!";
+
+                } else {
+                    comboText.textContent = "";
+                }
+
+                clearInterval(gameInterval);
+                gameInterval = null;
+
+                gameCard.style.borderColor = "#00ffcc";
+                gameCard.style.boxShadow =
+                    "0 0 30px rgba(0, 255, 204, 0.55)";
+
+                showQuestion(data);
+
+                answerTimeout = setTimeout(() => {
+
+                    answerTimeout = null;
+
+                    if (isGameOver) return;
+
+                    gameCard.style.borderColor = "#00d2ff";
+                    gameCard.style.boxShadow =
+                        "0 0 20px rgba(0, 210, 255, 0.25)";
+
+                    canAnswer = true;
+                    startFalling();
+                    userInput.focus();
+
+                }, 200);
+
+            } catch (error) {
+
+                console.error("Antwortprüfung:", error);
+
+                saveStatus.textContent =
+                    error.message || "Antwort konnte nicht geprüft werden.";
+
+                // Bei einem abgelaufenen Zeitfenster wird die Runde beendet.
+                if (
+                    error.message &&
+                    error.message.toLowerCase().includes("abgelaufen")
+                ) {
+                    requestInProgress = false;
+                    endGame();
+                    return;
+                }
+
+                canAnswer = true;
+
+            }
+
+            requestInProgress = false;
+        }
+
+
+        // Spiel beenden und Punktestand serverseitig speichern
+        async function endGame() {
+
+            if (isGameOver) return;
 
             isGameOver = true;
             canAnswer = false;
 
-            updateHighscore();
-            userInput.disabled = true;
-            finalScore.textContent = score;
-            gameOverBox.style.display = "block";
-
-            comboCount = 0;
-            multiplier = 1;
-            comboText.textContent = "";
-
-            gameCard.style.borderColor = "#ff0055";
-            gameCard.style.boxShadow = "0 0 30px rgba(255, 0, 85, 0.65)";
-
-            submitScore();
-        }
-
-        function updateSpeed() {
-            if (score < 15) {
-                fallSpeed = startSpeed + (score * 0.03);
-            } else if (score < 40) {
-                fallSpeed = startSpeed + 0.45 + ((score - 15) * 0.05);
-            } else {
-                fallSpeed = startSpeed + 1.7 + ((score - 40) * 0.1);
-            }
-            fallSpeed = Math.min(fallSpeed, 8);
-        }
-
-        function checkAnswer() {
-            if (!canAnswer || isGameOver) return;
-
-            const userAnswer = Number(userInput.value);
-            if (
-                userInput.value.trim() === "" ||
-                !Number.isFinite(userAnswer) ||
-                userAnswer !== correctAnswer
-            ) return;
-
-            canAnswer = false;
-            userInput.value = "";
-
-            const now = Date.now();
-            const timeTaken = (now - lastSolveTime) / 1000;
-            lastSolveTime = now;
-
-            if (timeTaken <= 1.8) {
-                comboCount++;
-                if (comboCount >= 6) {
-                    multiplier = 3;
-                    comboText.textContent = "Mega Combo x3!";
-                } else if (comboCount >= 3) {
-                    multiplier = 2;
-                    comboText.textContent = "Combo x2!";
-                } else {
-                    multiplier = 1;
-                    comboText.textContent = "";
-                }
-            } else {
-                comboCount = 1;
-                multiplier = 1;
-                comboText.textContent = "";
-            }
-
-            score += multiplier;
-            scoreText.textContent = score;
-            updateHighscore();
-            updateSpeed();
-
-            gameCard.style.borderColor = "#00ffcc";
-            gameCard.style.boxShadow = "0 0 30px rgba(0, 255, 204, 0.55)";
-
-            clearInterval(gameInterval);
-            gameInterval = null;
-
-            answerTimeout = setTimeout(() => {
-                answerTimeout = null;
-                if (isGameOver) return;
-
-                gameCard.style.borderColor = "#00d2ff";
-                gameCard.style.boxShadow = "0 0 20px rgba(0, 210, 255, 0.25)";
-                generateQuestion();
-                canAnswer = true;
-                startFalling();
-                userInput.focus();
-            }, 200);
-        }
-
-        function restartGame() {
             clearInterval(gameInterval);
             clearTimeout(answerTimeout);
+
             gameInterval = null;
             answerTimeout = null;
 
-            score = 0;
-            scoreSubmitted = false;
-            saveStatus.textContent = "";
-            fallSpeed = startSpeed;
-            currentY = 0;
-            comboCount = 0;
-            multiplier = 1;
-            lastSolveTime = Date.now();
-            isGameOver = false;
-            canAnswer = true;
+            userInput.disabled = true;
 
-            scoreText.textContent = "0";
+            updateHighscore();
+
+            finalScore.textContent = score;
+            gameOverBox.style.display = "block";
+
             comboText.textContent = "";
-            gameOverBox.style.display = "none";
-            userInput.disabled = false;
-            gameCard.style.borderColor = "#00d2ff";
-            gameCard.style.boxShadow = "0 0 20px rgba(0, 210, 255, 0.25)";
 
-            generateQuestion();
-            startFalling();
-            userInput.focus();
+            gameCard.style.borderColor = "#ff0055";
+            gameCard.style.boxShadow =
+                "0 0 30px rgba(255, 0, 85, 0.65)";
+
+            if (!sessionToken || scoreSubmitted) return;
+
+            scoreSubmitted = true;
+
+            saveStatus.textContent =
+                "Speichere Punktestand ...";
+
+            try {
+
+                const data = await callGameServer("end", {
+                    token: sessionToken
+                });
+
+                if (data.success) {
+
+                    saveStatus.textContent =
+                        "Punktestand gespeichert!";
+
+                    await loadLeaderboard();
+
+                } else {
+
+                    saveStatus.textContent =
+                        "Punktestand konnte nicht gespeichert werden.";
+                }
+
+            } catch (error) {
+
+                console.error("Spiel beenden:", error);
+
+                saveStatus.textContent =
+                    "Speichern fehlgeschlagen. Bitte später erneut versuchen.";
+
+            }
+
+            sessionToken = null;
         }
 
-        userInput.addEventListener("input", checkAnswer);
-        userInput.addEventListener("keydown", event => {
-            if (event.key === "Enter") checkAnswer();
-        });
-        restartBtn.addEventListener("click", restartGame);
 
+        // Ereignisse
+        startBtn.addEventListener("click", startGame);
+        restartBtn.addEventListener("click", startGame);
+
+        userInput.addEventListener("input", checkAnswer);
+
+        userInput.addEventListener("keydown", event => {
+            if (event.key === "Enter") {
+                checkAnswer();
+            }
+        });
+
+
+        // Initialisierung
         loadHighscore();
         loadLeaderboard();
-        lastSolveTime = Date.now();
-        generateQuestion();
-        userInput.disabled = false;
-        startFalling();
-        userInput.focus();
+
+        userInput.disabled = true;
+        restartBtn.disabled = false;
+
     </script>
 </body>
 </html>
