@@ -308,13 +308,14 @@
             </div>
 
             <input
-                type="number"
+                type="text"
                 id="userInput"
                 class="game-input"
                 placeholder="?"
                 aria-label="Ergebnis eingeben"
                 autocomplete="off"
                 inputmode="numeric"
+                pattern="[0-9]*"
                 disabled
             >
 
@@ -383,7 +384,6 @@
 
         let gameInterval = null;
         let answerTimeout = null;
-        let answerInputTimeout = null;
 
         let isGameOver = true;
         let canAnswer = false;
@@ -666,36 +666,49 @@
 
             if (answerText === "") return;
 
+            // Nur ganze positive Zahlen werden geprüft.
+            // Leere, unvollständige oder ungültige Eingaben
+            // lösen keine Fehlermeldung aus.
+            if (!/^\d+$/.test(answerText)) return;
+
             const userAnswer = Number(answerText);
 
             if (!Number.isSafeInteger(userAnswer)) return;
 
-            canAnswer = false;
+            // Während der Server prüft, bleibt das Eingabefeld aktiv.
+            // Die fallende Aufgabe läuft ebenfalls weiter.
             requestInProgress = true;
-            userInput.disabled = true;
 
             try {
 
                 const data = await callGameServer("answer", {
                     token: sessionToken,
-                    answer: userAnswer
+                    answer: answerText
                 });
 
                 if (!data.correct) {
 
-                    // Falsche Eingabe bleibt stehen und kann verbessert werden.
-                    canAnswer = true;
-                    userInput.disabled = false;
-                    userInput.focus();
-
-                    saveStatus.textContent =
-                        data.message || "Leider falsch – versuch es noch einmal.";
-
                     requestInProgress = false;
+
+                    if (isGameOver) return;
+
+                    // Wurde während der Serverprüfung weitergetippt,
+                    // prüfen wir sofort den inzwischen aktuellen Inhalt.
+                    if (userInput.value.trim() !== answerText) {
+                        checkAnswer();
+                    }
+
+                    // Bei falscher oder unvollständiger Eingabe:
+                    // nichts anzeigen, nichts abziehen, nichts löschen.
                     return;
                 }
 
-                // Punkte werden ausschließlich vom Server übernommen.
+                // Die Antwort war richtig.
+                // Jetzt wird kurz die nächste Aufgabe vorbereitet.
+                canAnswer = false;
+                userInput.disabled = true;
+
+                // Punkte kommen ausschließlich vom Server.
                 score = data.score;
                 scoreText.textContent = score;
 
@@ -725,13 +738,17 @@
 
                     answerTimeout = null;
 
-                    if (isGameOver) return;
+                    if (isGameOver) {
+                        requestInProgress = false;
+                        return;
+                    }
 
                     gameCard.style.borderColor = "#00d2ff";
                     gameCard.style.boxShadow =
                         "0 0 20px rgba(0, 210, 255, 0.25)";
 
                     canAnswer = true;
+                    requestInProgress = false;
                     userInput.disabled = false;
 
                     startFalling();
@@ -743,25 +760,29 @@
 
                 console.error("Antwortprüfung:", error);
 
-                saveStatus.textContent =
-                    error.message || "Antwort konnte nicht geprüft werden.";
+                requestInProgress = false;
+
+                if (isGameOver) return;
 
                 if (
                     error.message &&
                     error.message.toLowerCase().includes("abgelaufen")
                 ) {
-                    requestInProgress = false;
                     userInput.disabled = true;
                     endGame();
                     return;
                 }
 
-                canAnswer = true;
-                userInput.disabled = false;
-                userInput.focus();
-            }
+                // Falls während der Anfrage weitergetippt wurde,
+                // wird der aktuelle Inhalt erneut geprüft.
+                if (userInput.value.trim() !== answerText) {
+                    checkAnswer();
+                    return;
+                }
 
-            requestInProgress = false;
+                saveStatus.textContent =
+                    "Verbindung kurz unterbrochen. Bitte weiter versuchen.";
+            }
         }
 
 
@@ -774,11 +795,9 @@
 
             clearInterval(gameInterval);
             clearTimeout(answerTimeout);
-            clearTimeout(answerInputTimeout);
 
             gameInterval = null;
             answerTimeout = null;
-            answerInputTimeout = null;
 
             userInput.disabled = true;
 
@@ -831,33 +850,26 @@
         }
 
 
-        // Automatische Antwortprüfung mit kurzer Tipp-Pause.
+        // SOFORTIGE PRÜFUNG BEI JEDER EINGABE
         userInput.addEventListener("input", () => {
-
-            clearTimeout(answerInputTimeout);
 
             if (
                 !canAnswer ||
                 isGameOver ||
-                requestInProgress ||
                 userInput.value.trim() === ""
             ) {
                 return;
             }
 
-            answerInputTimeout = setTimeout(() => {
-                answerInputTimeout = null;
-                checkAnswer();
-            }, 900);
+            checkAnswer();
         });
 
 
-        // Enter bleibt zusätzlich als Möglichkeit erhalten.
+        // Enter kann zusätzlich weiterhin verwendet werden.
         userInput.addEventListener("keydown", event => {
 
             if (event.key === "Enter") {
-                clearTimeout(answerInputTimeout);
-                answerInputTimeout = null;
+                event.preventDefault();
                 checkAnswer();
             }
         });
