@@ -4,11 +4,19 @@
     <meta name="robots" content="noindex, nofollow">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Interaktiver Mathe-Trainer mit fallenden Rechenaufgaben, Combo-System und Highscore.">
-    <title>Math Drop Ultimate – Schulversion 🚀</title>
+    <meta name="description" content="Mathe-Trainer mit fallenden Rechenaufgaben, Combo-System und globaler Rangliste.">
+    <title>Mathe-Trainer</title>
 
     <style>
         * { box-sizing: border-box; }
+
+        :root {
+            --cyan: #00d2ff;
+            --mint: #00ffcc;
+            --gold: #ffaa00;
+            --panel: rgba(15, 23, 42, 0.94);
+            --deep: rgba(3, 7, 18, 0.78);
+        }
 
         body {
             font-family: Arial, sans-serif;
@@ -18,97 +26,86 @@
             background-position: center;
             background-repeat: no-repeat;
             background-color: #030712;
-            color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            color: #fff;
             min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            padding: 28px;
+        }
+
+        .page-shell {
+            width: 100%;
+            max-width: 1120px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 310px;
+            gap: 22px;
+            align-items: start;
+        }
+
+        .game-container,
+        .leaderboard-panel {
+            background: var(--panel);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--cyan);
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.25);
         }
 
         .game-container {
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(10px);
-            border: 2px solid #00d2ff;
             padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
             text-align: center;
-            width: 100%;
-            max-width: 440px;
+            min-width: 0;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         h1 {
-            color: #00d2ff;
-            margin: 0 0 5px;
-            font-size: 24px;
+            color: var(--cyan);
+            margin: 0 0 6px;
+            font-size: 30px;
+        }
+
+        .subtitle {
+            color: #a0aec0;
+            font-size: 14px;
+            margin: 0 0 18px;
         }
 
         .player-name {
             width: 100%;
-            max-width: 260px;
-            padding: 9px;
-            margin: 8px 0 12px;
-            border: 1px solid #00d2ff;
-            border-radius: 5px;
+            max-width: 280px;
+            padding: 10px;
+            margin: 8px 0 14px;
+            border: 1px solid var(--cyan);
+            border-radius: 6px;
             background: #030712;
             color: white;
             text-align: center;
             font-size: 16px;
         }
 
-        .leaderboard {
-            margin-top: 18px;
-            padding: 12px;
-            background: rgba(3, 7, 18, 0.7);
-            border: 1px solid rgba(0, 210, 255, 0.3);
-            border-radius: 8px;
-            text-align: left;
-        }
-
-        .leaderboard h2 {
-            color: #ffaa00;
-            font-size: 18px;
-            text-align: center;
-            margin: 0 0 10px;
-        }
-
-        .leaderboard ol {
-            margin: 0;
-            padding-left: 25px;
-        }
-
-        .leaderboard li {
-            padding: 4px 0;
-            overflow-wrap: anywhere;
-        }
-
-        #saveStatus {
-            font-size: 13px;
-            color: #a0aec0;
-            min-height: 18px;
-            margin-top: 6px;
+        .player-name:focus,
+        .game-input:focus {
+            outline: none;
+            box-shadow: 0 0 12px rgba(0, 210, 255, 0.5);
         }
 
         .combo-badge {
             font-size: 16px;
-            color: #ff0055;
+            color: #ff4d83;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 1px;
-            min-height: 24px;
-            transition: all 0.2s ease;
+            min-height: 26px;
             text-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
         }
 
+        /* Das Spielfeld behält seine bisherige Fall-Mechanik und Höhe. */
         .box-container {
             position: relative;
             width: 100%;
             height: 350px;
-            background: rgba(3, 7, 18, 0.7);
-            border: 1px solid rgba(0, 210, 255, 0.3);
+            background: var(--deep);
+            border: 1px solid rgba(0, 210, 255, 0.35);
             border-radius: 8px;
             overflow: hidden;
             margin-bottom: 15px;
@@ -120,26 +117,21 @@
             right: 0;
             top: 0;
             font-size: 28px;
-            color: #ffffff;
+            color: #fff;
             font-weight: bold;
-            text-shadow: 0 0 10px #00d2ff;
+            text-shadow: 0 0 10px var(--cyan);
         }
 
         .game-input {
-            width: 140px;
+            width: 150px;
             padding: 10px;
             font-size: 22px;
-            border-radius: 5px;
-            border: 2px solid #00d2ff;
+            border-radius: 6px;
+            border: 2px solid var(--cyan);
             background: #030712;
             color: white;
             text-align: center;
-            outline: none;
-            margin-bottom: 15px;
-        }
-
-        .game-input:focus {
-            box-shadow: 0 0 12px rgba(0, 210, 255, 0.5);
+            margin-bottom: 12px;
         }
 
         .game-input:disabled {
@@ -151,53 +143,121 @@
             display: flex;
             justify-content: space-around;
             gap: 10px;
-            margin-top: 15px;
+            margin-top: 12px;
             font-weight: bold;
             font-size: 18px;
             flex-wrap: wrap;
         }
 
-        .score-display { color: #00ffcc; }
-        .highscore-display { color: #ffaa00; }
-
-        .back-link {
-            display: block;
-            margin-top: 20px;
-            color: #a0aec0;
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .back-link:hover { color: #00d2ff; }
+        .score-display { color: var(--mint); }
+        .highscore-display { color: var(--gold); }
 
         .game-over {
             display: none;
-            margin-top: 20px;
+            margin-top: 18px;
         }
 
-        .game-over h2 { color: #ff0055; }
+        .game-over h2 { color: #ff4d83; }
 
         .restart-btn {
             background: transparent;
-            color: #00ffcc;
-            border: 1px solid #00ffcc;
-            border-radius: 5px;
-            padding: 10px 20px;
+            color: var(--mint);
+            border: 1px solid var(--mint);
+            border-radius: 6px;
+            padding: 11px 22px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s ease;
         }
 
         .restart-btn:hover {
-            background: #00ffcc;
+            background: var(--mint);
             color: #030712;
         }
 
+        .leaderboard-panel {
+            padding: 20px;
+            text-align: left;
+            position: sticky;
+            top: 24px;
+        }
+
+        .leaderboard-panel h2 {
+            color: var(--gold);
+            font-size: 21px;
+            text-align: center;
+            margin: 0 0 8px;
+        }
+
+        .leaderboard-note {
+            color: #a0aec0;
+            text-align: center;
+            font-size: 12px;
+            margin: 0 0 16px;
+        }
+
+        .leaderboard {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            counter-reset: rank;
+        }
+
+        .leaderboard li {
+            counter-increment: rank;
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            padding: 10px 8px;
+            margin: 0 0 7px;
+            background: var(--deep);
+            border: 1px solid rgba(0, 210, 255, 0.16);
+            border-radius: 7px;
+            overflow-wrap: anywhere;
+            font-size: 14px;
+        }
+
+        .leaderboard li::before {
+            content: counter(rank) ".";
+            color: var(--cyan);
+            font-weight: bold;
+            min-width: 22px;
+        }
+
+        #saveStatus {
+            font-size: 13px;
+            color: #a0aec0;
+            min-height: 18px;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        .footer-note {
+            color: #8d9bb0;
+            font-size: 12px;
+            margin: 18px 0 0;
+        }
+
+        @media (max-width: 760px) {
+            body { padding: 14px; }
+            .page-shell {
+                grid-template-columns: minmax(0, 1fr);
+                max-width: 520px;
+                gap: 16px;
+            }
+            .leaderboard-panel {
+                position: static;
+                order: 2;
+            }
+            .game-container { padding: 20px; }
+            .leaderboard-panel { padding: 17px; }
+        }
+
         @media (max-width: 480px) {
-            body { padding: 12px; }
-            .game-container { padding: 18px; }
-            h1 { font-size: 21px; }
+            body { padding: 10px; }
+            .game-container { padding: 16px; }
+            h1 { font-size: 25px; }
             .box-container { height: 320px; }
             .falling-question { font-size: 25px; }
             .stats-container { font-size: 16px; }
@@ -206,95 +266,77 @@
 </head>
 
 <body>
+    <main class="page-shell">
+        <section class="game-container" id="gameCard" aria-label="Mathe-Trainer">
+            <h1>Mathe-Trainer</h1>
+            <p class="subtitle">Übe Kopfrechnen und sammle Punkte</p>
 
-    <main class="game-container" id="gameCard">
+            <label for="playerName">Dein Spielername:</label><br>
+            <input type="text" id="playerName" class="player-name"
+                   maxlength="24" placeholder="Name eingeben" autocomplete="nickname">
 
-        <h1>Math Drop Ultimate 🧠☄️</h1>
-        <p style="color:#a0aec0; font-size:13px; margin:0 0 12px;">Schulversion · Übe Kopfrechnen und sammle Punkte</p>
+            <div class="combo-badge" id="comboText" aria-live="polite"></div>
 
-        <label for="playerName">Dein Spielername:</label><br>
-        <input type="text" id="playerName" class="player-name"
-               maxlength="24" placeholder="Name eingeben" autocomplete="nickname">
-
-        <div class="combo-badge" id="comboText" aria-live="polite"></div>
-
-        <div class="box-container" id="gameArea">
-            <div class="falling-question" id="questionText">
-                Berechne...
-            </div>
-        </div>
-
-        <input
-            type="number"
-            id="userInput"
-            class="game-input"
-            placeholder="?"
-            aria-label="Ergebnis eingeben"
-            autocomplete="off"
-            inputmode="numeric"
-            disabled
-        >
-
-        <div class="stats-container">
-            <div class="score-display">
-                Punkte: <span id="scoreText">0</span>
+            <div class="box-container" id="gameArea">
+                <div class="falling-question" id="questionText">Berechne...</div>
             </div>
 
-            <div class="highscore-display">
-                🏆 Highscore: <span id="highscoreText">0</span>
+            <input
+                type="number"
+                id="userInput"
+                class="game-input"
+                placeholder="?"
+                aria-label="Ergebnis eingeben"
+                autocomplete="off"
+                inputmode="numeric"
+                disabled
+            >
+
+            <div class="stats-container">
+                <div class="score-display">Punkte: <span id="scoreText">0</span></div>
+                <div class="highscore-display">Highscore: <span id="highscoreText">0</span></div>
             </div>
-        </div>
 
-        <div class="game-over" id="gameOver">
-            <h2>Game Over! 💥</h2>
-            <p>Deine Punkte: <strong id="finalScore">0</strong></p>
-            <button type="button" class="restart-btn" id="restartBtn">
-                Nochmal spielen
-            </button>
-        </div>
+            <div class="game-over" id="gameOver">
+                <h2>Spiel beendet!</h2>
+                <p>Deine Punkte: <strong id="finalScore">0</strong></p>
+                <button type="button" class="restart-btn" id="restartBtn">Nochmal spielen</button>
+            </div>
 
-        <section class="leaderboard" aria-live="polite">
-            <h2>🏆 Globale Top 10</h2>
-            <ol id="leaderboardList"><li>Lade Rangliste ...</li></ol>
-            <div id="saveStatus"></div>
+            <p class="footer-note">Mathe-Trainer · Schulversion</p>
         </section>
 
-        <p class="back-link">Math Drop Ultimate · Schulversion</p>
-
+        <aside class="leaderboard-panel" aria-live="polite">
+            <h2>Globale Top 10</h2>
+            <p class="leaderboard-note">Die besten Punktestände</p>
+            <ol class="leaderboard" id="leaderboardList">
+                <li>Rangliste wird geladen ...</li>
+            </ol>
+            <div id="saveStatus" role="status" aria-live="polite"></div>
+        </aside>
     </main>
 
-    <!-- Supabase JS library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // TODO: Hier deine Supabase-Projekt-URL und den anon/public key eintragen.
-        // Supabase: Project Settings -> API (oder API Keys).
         const SUPABASE_URL = "https://llvunpjwlwyefuzabqah.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_NJE8YQ96N-5sA2hVNVrfBg_a1STgKjX";
-        console.log("Supabase URL:", SUPABASE_URL);
-        console.log("Supabase Bibliothek:", window.supabase);
-        const supabaseClient = (SUPABASE_URL.startsWith("https://") &&
-            !SUPABASE_URL.includes("DEINE_") &&
-            !SUPABASE_ANON_KEY.includes("DEIN_"))
+
+        const supabaseClient = window.supabase?.createClient
             ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
             : null;
 
         let scoreSubmitted = false;
-
         let num1;
         let num2;
         let correctAnswer;
-
         let score = 0;
         let highscore = 0;
-
         let currentY = 0;
         const startSpeed = 1.2;
         let fallSpeed = startSpeed;
-
         let gameInterval = null;
         let answerTimeout = null;
         let isGameOver = false;
-
         let comboCount = 0;
         let multiplier = 1;
         let lastSolveTime = 0;
@@ -316,7 +358,7 @@
 
         async function loadLeaderboard() {
             if (!supabaseClient) {
-                leaderboardList.innerHTML = "<li>Supabase-Verbindung noch nicht eingerichtet.</li>";
+                leaderboardList.innerHTML = "<li>Supabase-Verbindung nicht verfügbar.</li>";
                 return;
             }
 
@@ -347,46 +389,46 @@
 
         async function submitScore() {
             if (scoreSubmitted) return;
-            scoreSubmitted = true;
-
             if (!supabaseClient) {
-                saveStatus.textContent = "Supabase ist noch nicht eingerichtet.";
+                saveStatus.textContent = "Supabase-Verbindung nicht verfügbar.";
                 return;
             }
 
-            const playerName = playerNameInput.value.trim() || "Spieler";
+            const playerName = playerNameInput.value.trim();
+            if (!playerName) {
+                saveStatus.textContent = "Bitte gib vor dem Spielen deinen Namen ein.";
+                playerNameInput.focus();
+                return;
+            }
 
+            scoreSubmitted = true;
             saveStatus.textContent = "Speichere Punktestand ...";
+
             const { error } = await supabaseClient
                 .from("highscores")
                 .insert([{ player_name: playerName, score: score }]);
 
             if (error) {
-                saveStatus.textContent = "Speichern fehlgeschlagen. Details in der Konsole.";
+                saveStatus.textContent = "Speichern fehlgeschlagen. Bitte später erneut versuchen.";
                 console.error("Highscore speichern:", error);
+                scoreSubmitted = false;
                 return;
             }
 
-            saveStatus.textContent = "Punktestand gespeichert! 🏆";
+            saveStatus.textContent = "Punktestand gespeichert!";
             await loadLeaderboard();
         }
 
         function loadHighscore() {
             try {
-                const savedHighscore =
-                    localStorage.getItem("mathDropHighscore");
-
+                const savedHighscore = localStorage.getItem("mathDropHighscore");
                 if (savedHighscore !== null) {
                     const parsed = Number.parseInt(savedHighscore, 10);
-
-                    if (Number.isFinite(parsed) && parsed >= 0) {
-                        highscore = parsed;
-                    }
+                    if (Number.isFinite(parsed) && parsed >= 0) highscore = parsed;
                 }
             } catch (error) {
                 highscore = 0;
             }
-
             highscoreText.textContent = highscore;
         }
 
@@ -394,7 +436,6 @@
             if (score > highscore) {
                 highscore = score;
                 highscoreText.textContent = highscore;
-
                 try {
                     localStorage.setItem("mathDropHighscore", highscore);
                 } catch (error) {
@@ -407,20 +448,16 @@
             if (isGameOver) return;
 
             const operators = ["+", "-", "*"];
-            const operator = operators[
-                Math.floor(Math.random() * operators.length)
-            ];
+            const operator = operators[Math.floor(Math.random() * operators.length)];
 
             if (operator === "+") {
                 num1 = Math.floor(Math.random() * 20) + 1;
                 num2 = Math.floor(Math.random() * 20) + 1;
                 correctAnswer = num1 + num2;
-
             } else if (operator === "-") {
                 num1 = Math.floor(Math.random() * 20) + 5;
                 num2 = Math.floor(Math.random() * num1) + 1;
                 correctAnswer = num1 - num2;
-
             } else {
                 num1 = Math.floor(Math.random() * 10) + 1;
                 num2 = Math.floor(Math.random() * 10) + 1;
@@ -428,31 +465,22 @@
             }
 
             const displayOperator = operator === "*" ? "×" : operator;
-
-            questionText.textContent =
-                num1 + " " + displayOperator + " " + num2;
-
+            questionText.textContent = num1 + " " + displayOperator + " " + num2;
             currentY = 0;
             questionText.style.top = "0px";
-
             userInput.value = "";
         }
 
         function startFalling() {
             clearInterval(gameInterval);
-
             gameInterval = setInterval(() => {
                 if (isGameOver || !canAnswer) return;
 
                 currentY += fallSpeed;
                 questionText.style.top = currentY + "px";
 
-                const maxY =
-                    gameArea.clientHeight - questionText.offsetHeight;
-
-                if (currentY >= maxY) {
-                    endGame();
-                }
+                const maxY = gameArea.clientHeight - questionText.offsetHeight;
+                if (currentY >= maxY) endGame();
             }, 30);
         }
 
@@ -461,7 +489,6 @@
 
             clearInterval(gameInterval);
             gameInterval = null;
-
             clearTimeout(answerTimeout);
             answerTimeout = null;
 
@@ -469,8 +496,6 @@
             canAnswer = false;
 
             updateHighscore();
-            submitScore();
-
             userInput.disabled = true;
             finalScore.textContent = score;
             gameOverBox.style.display = "block";
@@ -480,22 +505,19 @@
             comboText.textContent = "";
 
             gameCard.style.borderColor = "#ff0055";
-            gameCard.style.boxShadow =
-                "0 0 30px rgba(255, 0, 85, 0.8)";
+            gameCard.style.boxShadow = "0 0 30px rgba(255, 0, 85, 0.65)";
+
+            submitScore();
         }
 
         function updateSpeed() {
             if (score < 15) {
                 fallSpeed = startSpeed + (score * 0.03);
-
             } else if (score < 40) {
                 fallSpeed = startSpeed + 0.45 + ((score - 15) * 0.05);
-
             } else {
                 fallSpeed = startSpeed + 1.7 + ((score - 40) * 0.1);
             }
-
-            // Verhindert eine zu hohe Spielgeschwindigkeit.
             fallSpeed = Math.min(fallSpeed, 8);
         }
 
@@ -503,39 +525,31 @@
             if (!canAnswer || isGameOver) return;
 
             const userAnswer = Number(userInput.value);
-
             if (
                 userInput.value.trim() === "" ||
                 !Number.isFinite(userAnswer) ||
                 userAnswer !== correctAnswer
-            ) {
-                return;
-            }
+            ) return;
 
             canAnswer = false;
             userInput.value = "";
 
             const now = Date.now();
             const timeTaken = (now - lastSolveTime) / 1000;
-
             lastSolveTime = now;
 
             if (timeTaken <= 1.8) {
                 comboCount++;
-
                 if (comboCount >= 6) {
                     multiplier = 3;
-                    comboText.textContent = "🔥 Mega Combo x3! 🔥";
-
+                    comboText.textContent = "Mega Combo x3!";
                 } else if (comboCount >= 3) {
                     multiplier = 2;
-                    comboText.textContent = "⚡ Combo x2! ⚡";
-
+                    comboText.textContent = "Combo x2!";
                 } else {
                     multiplier = 1;
                     comboText.textContent = "";
                 }
-
             } else {
                 comboCount = 1;
                 multiplier = 1;
@@ -544,39 +558,31 @@
 
             score += multiplier;
             scoreText.textContent = score;
-
             updateHighscore();
             updateSpeed();
 
             gameCard.style.borderColor = "#00ffcc";
-            gameCard.style.boxShadow =
-                "0 0 30px rgba(0, 255, 204, 0.8)";
+            gameCard.style.boxShadow = "0 0 30px rgba(0, 255, 204, 0.55)";
 
             clearInterval(gameInterval);
             gameInterval = null;
 
             answerTimeout = setTimeout(() => {
                 answerTimeout = null;
-
                 if (isGameOver) return;
 
                 gameCard.style.borderColor = "#00d2ff";
-                gameCard.style.boxShadow =
-                    "0 0 20px rgba(0, 210, 255, 0.3)";
-
+                gameCard.style.boxShadow = "0 0 20px rgba(0, 210, 255, 0.25)";
                 generateQuestion();
-
                 canAnswer = true;
                 startFalling();
                 userInput.focus();
-
             }, 200);
         }
 
         function restartGame() {
             clearInterval(gameInterval);
             clearTimeout(answerTimeout);
-
             gameInterval = null;
             answerTimeout = null;
 
@@ -585,23 +591,18 @@
             saveStatus.textContent = "";
             fallSpeed = startSpeed;
             currentY = 0;
-
             comboCount = 0;
             multiplier = 1;
             lastSolveTime = Date.now();
-
             isGameOver = false;
             canAnswer = true;
 
             scoreText.textContent = "0";
             comboText.textContent = "";
-
             gameOverBox.style.display = "none";
             userInput.disabled = false;
-
             gameCard.style.borderColor = "#00d2ff";
-            gameCard.style.boxShadow =
-                "0 0 20px rgba(0, 210, 255, 0.3)";
+            gameCard.style.boxShadow = "0 0 20px rgba(0, 210, 255, 0.25)";
 
             generateQuestion();
             startFalling();
@@ -609,16 +610,11 @@
         }
 
         userInput.addEventListener("input", checkAnswer);
-
         userInput.addEventListener("keydown", event => {
-            if (event.key === "Enter") {
-                checkAnswer();
-            }
+            if (event.key === "Enter") checkAnswer();
         });
-
         restartBtn.addEventListener("click", restartGame);
 
-        // Spiel initialisieren.
         loadHighscore();
         loadLeaderboard();
         lastSolveTime = Date.now();
@@ -627,6 +623,5 @@
         startFalling();
         userInput.focus();
     </script>
-
 </body>
 </html>
