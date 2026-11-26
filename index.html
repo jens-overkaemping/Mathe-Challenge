@@ -270,6 +270,8 @@
         // Supabase: Project Settings -> API (oder API Keys).
         const SUPABASE_URL = "https://llvunpjwlwyefuzabqah.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_NJE8YQ96N-5sA2hVNVrfBg_a1STgKjX";
+        console.log("Supabase URL:", SUPABASE_URL);
+        console.log("Supabase Bibliothek:", window.supabase);
         const supabaseClient = (SUPABASE_URL.startsWith("https://") &&
             !SUPABASE_URL.includes("DEINE_") &&
             !SUPABASE_ANON_KEY.includes("DEIN_"))
