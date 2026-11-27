@@ -139,6 +139,39 @@
             cursor: not-allowed;
         }
 
+        .answer-checking {
+            min-height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: -4px 0 8px;
+            color: var(--cyan);
+            font-size: 13px;
+            font-weight: bold;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.12s ease;
+        }
+
+        .answer-checking.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .loading-spinner {
+            width: 15px;
+            height: 15px;
+            border: 2px solid rgba(0, 210, 255, 0.25);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spinner-turn 0.65s linear infinite;
+        }
+
+        @keyframes spinner-turn {
+            to { transform: rotate(360deg); }
+        }
+
         .stats-container {
             display: flex;
             justify-content: space-around;
@@ -316,6 +349,11 @@
             pattern="[0-9]*"
             disabled
         >
+
+        <div class="answer-checking" id="answerChecking" role="status" aria-live="polite">
+            <span class="loading-spinner" aria-hidden="true"></span>
+            <span>Antwort wird geprüft ...</span>
+        </div>
 
         <div class="stats-container">
             <div class="score-display">
@@ -598,6 +636,8 @@ async function startGame() {
 
         comboText.textContent = "";
         gameOverBox.style.display = "none";
+        answerChecking.classList.remove("visible");
+        userInput.placeholder = "?";
 
 
         startBtn.style.display = "none";
@@ -655,7 +695,7 @@ async function checkAnswer() {
     // Eingabe während der Prüfung sperren.
     // Die Aufgabe und ihre Fallbewegung laufen unverändert weiter.
     userInput.disabled = true;
-    userInput.placeholder = "…";
+    answerChecking.classList.add("visible");
 
     try {
         const data = await callGameServer("answer", {
@@ -674,8 +714,8 @@ async function checkAnswer() {
             requestInProgress = false;
 
             // Dieselbe Aufgabe fällt an ihrer aktuellen Position weiter.
+            answerChecking.classList.remove("visible");
             userInput.value = "";
-            userInput.placeholder = "?";
             userInput.disabled = false;
             userInput.focus();
 
@@ -700,6 +740,7 @@ async function checkAnswer() {
         }
 
         // Neue Aufgabe anzeigen. showQuestion setzt ihre Position auf 0.
+        answerChecking.classList.remove("visible");
         showQuestion(data);
 
         gameCard.style.borderColor = "#00d2ff";
@@ -721,6 +762,7 @@ async function checkAnswer() {
         console.error("Antwortprüfung:", error);
 
         requestInProgress = false;
+        answerChecking.classList.remove("visible");
 
         if (isGameOver) return;
 
@@ -755,6 +797,7 @@ async function endGame() {
     gameInterval = null;
 
     userInput.disabled = true;
+    answerChecking.classList.remove("visible");
 
     questionText.style.visibility = "visible";
 
