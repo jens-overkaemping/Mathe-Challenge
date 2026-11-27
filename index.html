@@ -121,28 +121,7 @@
             font-weight: bold;
             text-shadow: 0 0 10px var(--cyan);
         }
-
-        /* Sofortiges Feedback */
-        .answer-feedback {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 65px;
-            font-weight: bold;
-            color: var(--mint);
-            text-shadow: 0 0 25px var(--mint);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.12s ease;
-        }
-
-        .answer-feedback.visible {
-            opacity: 1;
-        }
-
-        .game-input {
+.game-input {
             width: 150px;
             padding: 10px;
             font-size: 22px;
@@ -324,7 +303,6 @@
 
         <div class="box-container" id="gameArea">
             <div class="falling-question" id="questionText">Bereit?</div>
-            <div class="answer-feedback" id="answerFeedback">✓</div>
         </div>
 
         <input
@@ -410,7 +388,6 @@ const gameCard = document.getElementById("gameCard");
 const gameArea = document.getElementById("gameArea");
 const questionText = document.getElementById("questionText");
 const userInput = document.getElementById("userInput");
-const answerFeedback = document.getElementById("answerFeedback");
 
 const scoreText = document.getElementById("scoreText");
 const highscoreText = document.getElementById("highscoreText");
@@ -622,7 +599,6 @@ async function startGame() {
         comboText.textContent = "";
         gameOverBox.style.display = "none";
 
-        answerFeedback.classList.remove("visible");
 
         startBtn.style.display = "none";
 
@@ -676,17 +652,10 @@ async function checkAnswer() {
 
     requestInProgress = true;
 
-    const previousY = currentY;
-
-    // Fallbewegung während der Serverprüfung anhalten
-    clearInterval(gameInterval);
-    gameInterval = null;
-
-    // Aufgabe sofort ausblenden
-    questionText.style.visibility = "hidden";
-
-    // Grünes Feedback anzeigen
-    answerFeedback.classList.add("visible");
+    // Eingabe während der Prüfung sperren.
+    // Die Aufgabe und ihre Fallbewegung laufen unverändert weiter.
+    userInput.disabled = true;
+    userInput.placeholder = "…";
 
     try {
         const data = await callGameServer("answer", {
@@ -694,32 +663,27 @@ async function checkAnswer() {
             answer: answerText
         });
 
+        // Ist die Aufgabe inzwischen unten angekommen, bleibt das Spiel beendet.
+        if (isGameOver) {
+            requestInProgress = false;
+            return;
+        }
+
         // FALSCHE ANTWORT
         if (!data.correct) {
             requestInProgress = false;
 
-            if (isGameOver) return;
-
-            // Alte Aufgabe an gleicher Position wieder anzeigen
-            questionText.style.visibility = "visible";
-            currentY = previousY;
-            questionText.style.top = currentY + "px";
-
-            answerFeedback.classList.remove("visible");
-
-            // Neu eingegebene Zeichen erneut prüfen
-            if (userInput.value.trim() !== answerText) {
-                checkAnswer();
-            } else {
-                startFalling();
-            }
+            // Dieselbe Aufgabe fällt an ihrer aktuellen Position weiter.
+            userInput.value = "";
+            userInput.placeholder = "?";
+            userInput.disabled = false;
+            userInput.focus();
 
             return;
         }
 
         // RICHTIGE ANTWORT
         canAnswer = false;
-        userInput.disabled = true;
 
         score = data.score;
         scoreText.textContent = score;
@@ -735,15 +699,8 @@ async function checkAnswer() {
             comboText.textContent = "";
         }
 
-        answerFeedback.classList.remove("visible");
-
-        // Neue Aufgabe anzeigen
+        // Neue Aufgabe anzeigen. showQuestion setzt ihre Position auf 0.
         showQuestion(data);
-
-        if (isGameOver) {
-            requestInProgress = false;
-            return;
-        }
 
         gameCard.style.borderColor = "#00d2ff";
         gameCard.style.boxShadow =
@@ -752,8 +709,11 @@ async function checkAnswer() {
         canAnswer = true;
         requestInProgress = false;
 
+        userInput.placeholder = "?";
         userInput.disabled = false;
 
+        // Die Fallbewegung läuft bereits. startFalling setzt sie
+        // für die neue Aufgabe sauber mit der neuen Geschwindigkeit fort.
         startFalling();
         userInput.focus();
 
@@ -764,27 +724,23 @@ async function checkAnswer() {
 
         if (isGameOver) return;
 
-        answerFeedback.classList.remove("visible");
+        userInput.placeholder = "?";
+        userInput.value = "";
+        userInput.disabled = false;
+        userInput.focus();
 
         if (
             error.message &&
             error.message.toLowerCase().includes("abgelaufen")
         ) {
-            questionText.style.visibility = "visible";
             userInput.disabled = true;
             endGame();
             return;
         }
 
-        // Bei Verbindungsfehler Aufgabe wiederherstellen
-        questionText.style.visibility = "visible";
-        currentY = previousY;
-        questionText.style.top = currentY + "px";
-
-        startFalling();
-
+        // Bei einem Verbindungsfehler läuft die aktuelle Aufgabe weiter.
         saveStatus.textContent =
-            "Verbindung kurz unterbrochen. Bitte weiter versuchen.";
+            "Verbindung kurz unterbrochen. Bitte erneut versuchen.";
     }
 }
 
@@ -800,7 +756,6 @@ async function endGame() {
 
     userInput.disabled = true;
 
-    answerFeedback.classList.remove("visible");
     questionText.style.visibility = "visible";
 
     updateHighscore();
