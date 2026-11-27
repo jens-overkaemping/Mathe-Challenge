@@ -416,6 +416,7 @@ let gameInterval = null;
 let isGameOver = true;
 let canAnswer = false;
 let requestInProgress = false;
+let reachedBottomWhileChecking = false;
 
 let sessionToken = null;
 let scoreSubmitted = false;
@@ -593,7 +594,16 @@ function startFalling() {
             gameArea.clientHeight - questionText.offsetHeight;
 
         if (currentY >= maxY) {
-            endGame();
+            currentY = maxY;
+            questionText.style.top = currentY + "px";
+
+            if (requestInProgress) {
+                // Nicht vorzeitig Game Over auslösen, solange der Server
+                // eine bereits abgeschickte Antwort noch prüft.
+                reachedBottomWhileChecking = true;
+            } else {
+                endGame();
+            }
         }
     }, 30);
 }
@@ -633,6 +643,7 @@ async function startGame() {
 
         fallSpeed = startSpeed;
         currentY = 0;
+        reachedBottomWhileChecking = false;
 
         comboText.textContent = "";
         gameOverBox.style.display = "none";
@@ -712,9 +723,16 @@ async function checkAnswer() {
         // FALSCHE ANTWORT
         if (!data.correct) {
             requestInProgress = false;
+            answerChecking.classList.remove("visible");
+
+            // Ist die Aufgabe während der Prüfung unten angekommen,
+            // endet das Spiel direkt nach der falschen Antwort.
+            if (reachedBottomWhileChecking) {
+                endGame();
+                return;
+            }
 
             // Dieselbe Aufgabe fällt an ihrer aktuellen Position weiter.
-            answerChecking.classList.remove("visible");
             userInput.value = "";
             userInput.disabled = false;
             userInput.focus();
@@ -723,6 +741,9 @@ async function checkAnswer() {
         }
 
         // RICHTIGE ANTWORT
+        // Eine bestätigte richtige Antwort darf noch übernommen werden,
+        // auch wenn die Animation während der Serverprüfung unten ankam.
+        reachedBottomWhileChecking = false;
         canAnswer = false;
 
         score = data.score;
@@ -765,6 +786,14 @@ async function checkAnswer() {
         answerChecking.classList.remove("visible");
 
         if (isGameOver) return;
+
+        // Bei einer fehlgeschlagenen Prüfung gibt es keine Zeitverlängerung:
+        // Ist die Aufgabe bereits unten, wird das Spiel beendet.
+        if (reachedBottomWhileChecking) {
+            userInput.disabled = true;
+            endGame();
+            return;
+        }
 
         userInput.placeholder = "?";
         userInput.value = "";
