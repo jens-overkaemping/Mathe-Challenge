@@ -122,6 +122,26 @@
             text-shadow: 0 0 10px var(--cyan);
         }
 
+        /* Sofortiges Feedback */
+        .answer-feedback {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 65px;
+            font-weight: bold;
+            color: var(--mint);
+            text-shadow: 0 0 25px var(--mint);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.12s ease;
+        }
+
+        .answer-feedback.visible {
+            opacity: 1;
+        }
+
         .game-input {
             width: 150px;
             padding: 10px;
@@ -132,6 +152,7 @@
             color: white;
             text-align: center;
             margin-bottom: 12px;
+            transition: border-color 0.12s ease, box-shadow 0.12s ease;
         }
 
         .game-input:disabled {
@@ -303,6 +324,7 @@
 
         <div class="box-container" id="gameArea">
             <div class="falling-question" id="questionText">Bereit?</div>
+            <div class="answer-feedback" id="answerFeedback">✓</div>
         </div>
 
         <input
@@ -382,14 +404,13 @@ let requestInProgress = false;
 let sessionToken = null;
 let scoreSubmitted = false;
 
-// Anzahl der Ziffern der aktuellen Lösung.
-// Die Lösung selbst wird NICHT an den Browser übertragen.
 let expectedAnswerLength = 1;
 
 const gameCard = document.getElementById("gameCard");
 const gameArea = document.getElementById("gameArea");
 const questionText = document.getElementById("questionText");
 const userInput = document.getElementById("userInput");
+const answerFeedback = document.getElementById("answerFeedback");
 
 const scoreText = document.getElementById("scoreText");
 const highscoreText = document.getElementById("highscoreText");
@@ -519,12 +540,12 @@ function showQuestion(data) {
     questionText.textContent =
         `${num1} ${displayOperator} ${num2}`;
 
-    // Nur die Ziffernanzahl wird übernommen.
     expectedAnswerLength =
         Number(data.answer_length) || 1;
 
     currentY = 0;
     questionText.style.top = "0px";
+    questionText.style.visibility = "visible";
     userInput.value = "";
 }
 
@@ -601,6 +622,8 @@ async function startGame() {
         comboText.textContent = "";
         gameOverBox.style.display = "none";
 
+        answerFeedback.classList.remove("visible");
+
         startBtn.style.display = "none";
 
         gameCard.style.borderColor = "#00d2ff";
@@ -647,15 +670,23 @@ async function checkAnswer() {
 
     if (!Number.isSafeInteger(userAnswer)) return;
 
-    // NEU:
-    // Bei einer mehrstelligen Antwort warten wir,
-    // bis mindestens die benötigte Ziffernanzahl eingegeben wurde.
-    // Dadurch sparen wir unnötige Serveranfragen.
     if (answerText.length < expectedAnswerLength) {
         return;
     }
 
     requestInProgress = true;
+
+    const previousY = currentY;
+
+    // Fallbewegung während der Serverprüfung anhalten
+    clearInterval(gameInterval);
+    gameInterval = null;
+
+    // Aufgabe sofort ausblenden
+    questionText.style.visibility = "hidden";
+
+    // Grünes Feedback anzeigen
+    answerFeedback.classList.add("visible");
 
     try {
         const data = await callGameServer("answer", {
@@ -663,15 +694,24 @@ async function checkAnswer() {
             answer: answerText
         });
 
+        // FALSCHE ANTWORT
         if (!data.correct) {
             requestInProgress = false;
 
             if (isGameOver) return;
 
-            // Wurde während der Anfrage weitergetippt,
-            // prüfen wir den aktuellen Inhalt erneut.
+            // Alte Aufgabe an gleicher Position wieder anzeigen
+            questionText.style.visibility = "visible";
+            currentY = previousY;
+            questionText.style.top = currentY + "px";
+
+            answerFeedback.classList.remove("visible");
+
+            // Neu eingegebene Zeichen erneut prüfen
             if (userInput.value.trim() !== answerText) {
                 checkAnswer();
+            } else {
+                startFalling();
             }
 
             return;
@@ -695,18 +735,11 @@ async function checkAnswer() {
             comboText.textContent = "";
         }
 
-        clearInterval(gameInterval);
-        gameInterval = null;
+        answerFeedback.classList.remove("visible");
 
-        gameCard.style.borderColor = "#00ffcc";
-        gameCard.style.boxShadow =
-            "0 0 30px rgba(0, 255, 204, 0.55)";
-
+        // Neue Aufgabe anzeigen
         showQuestion(data);
 
-        // NEU:
-        // Keine zusätzliche 200-ms-Wartezeit mehr.
-        // Sobald der Server bestätigt hat, geht es weiter.
         if (isGameOver) {
             requestInProgress = false;
             return;
@@ -718,6 +751,7 @@ async function checkAnswer() {
 
         canAnswer = true;
         requestInProgress = false;
+
         userInput.disabled = false;
 
         startFalling();
@@ -730,19 +764,24 @@ async function checkAnswer() {
 
         if (isGameOver) return;
 
+        answerFeedback.classList.remove("visible");
+
         if (
             error.message &&
             error.message.toLowerCase().includes("abgelaufen")
         ) {
+            questionText.style.visibility = "visible";
             userInput.disabled = true;
             endGame();
             return;
         }
 
-        if (userInput.value.trim() !== answerText) {
-            checkAnswer();
-            return;
-        }
+        // Bei Verbindungsfehler Aufgabe wiederherstellen
+        questionText.style.visibility = "visible";
+        currentY = previousY;
+        questionText.style.top = currentY + "px";
+
+        startFalling();
 
         saveStatus.textContent =
             "Verbindung kurz unterbrochen. Bitte weiter versuchen.";
@@ -760,6 +799,9 @@ async function endGame() {
     gameInterval = null;
 
     userInput.disabled = true;
+
+    answerFeedback.classList.remove("visible");
+    questionText.style.visibility = "visible";
 
     updateHighscore();
 
@@ -804,8 +846,7 @@ async function endGame() {
 }
 
 
-// Sofortige Prüfung bei jeder Eingabe.
-// Bei unvollständigen Antworten erfolgt keine Anfrage.
+// Sofortige Prüfung bei jeder Eingabe
 userInput.addEventListener("input", () => {
     if (
         !canAnswer ||
