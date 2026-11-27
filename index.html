@@ -371,7 +371,7 @@ let score = 0;
 let highscore = 0;
 let currentY = 0;
 
-const startSpeed = 1.2;
+const startSpeed = 1.0;
 let fallSpeed = startSpeed;
 
 let gameInterval = null;
@@ -531,16 +531,16 @@ function showQuestion(data) {
 
 function updateSpeed() {
     if (score < 15) {
-        fallSpeed = startSpeed + (score * 0.03);
+        fallSpeed = startSpeed + (score * 0.02);
     } else if (score < 40) {
         fallSpeed =
-            startSpeed + 0.45 + ((score - 15) * 0.05);
+            startSpeed + 0.3 + ((score - 15) * 0.035);
     } else {
         fallSpeed =
-            startSpeed + 1.7 + ((score - 40) * 0.1);
+            startSpeed + 1.175 + ((score - 40) * 0.06);
     }
 
-    fallSpeed = Math.min(fallSpeed, 8);
+    fallSpeed = Math.min(fallSpeed, 5);
 }
 
 
